@@ -1,0 +1,36 @@
+{
+  "name": "arch-hub-experimental",
+  "version": "1.0.0",
+  "description": "建物リユース資材調査アプリケーション - Google Maps API、PLATEAU配信サービス、生成AIを統合",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slalom-one/arch-hub-experimental.git"
+  },
+  "keywords": [
+    "plateau",
+    "google-maps",
+    "building-reuse",
+    "circular-economy",
+    "ai"
+  ],
+  "author": "Tetsuya Nitta",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/slalom-one/arch-hub-experimental/issues"
+  },
+  "homepage": "https://github.com/slalom-one/arch-hub-experimental#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
