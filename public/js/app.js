@@ -45,7 +45,29 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     loadGoogleMapsAPI();
     initializeCesiumEventHandlers();
+    initializePlateauHandlers();
 });
+
+// データ取得状況を表示する関数
+function updateLoadingStatus(message) {
+    const loadingElement = document.getElementById('plateauLoading');
+    if (loadingElement && loadingElement.style.display !== 'none') {
+        const statusText = loadingElement.querySelector('.loading-status-text');
+        if (statusText) {
+            statusText.textContent = message;
+        } else {
+            // 状況テキスト要素を作成
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'loading-status-text';
+            statusSpan.textContent = message;
+            loadingElement.appendChild(document.createElement('br'));
+            loadingElement.appendChild(statusSpan);
+        }
+    }
+    
+    // コンソールにも出力
+    console.info(`[取得状況] ${message}`);
+}
 
 function initializeConsole() {
     const originalConsoleLog = console.log;
@@ -102,27 +124,19 @@ function checkApiConfiguration() {
                     apiKey: data.data.apiKey ? '***HIDDEN***' : null
                 }
             });
-            const statusElement = document.getElementById('googleMapsStatus');
             if (data.data.googleMapsApiConfigured) {
                 if (data.data.apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-                    statusElement.textContent = 'サンプルキーのまま';
-                    statusElement.className = 'status-value status-error';
                     console.warn('APIキーがサンプルのままです。実際のAPIキーに変更してください。');
                     showError('APIキーがサンプルのままです。.envファイルに実際のAPIキーを設定してください。');
                 } else {
-                    statusElement.textContent = '設定済み';
-                    statusElement.className = 'status-value status-ok';
                     console.info('Google Maps APIキーが設定されています');
                 }
             } else {
-                statusElement.textContent = 'APIキーが設定されていません';
-                statusElement.className = 'status-value status-error';
                 showError('Google Maps APIキーが設定されていません。.envファイルを確認してください。');
             }
         })
         .catch(error => {
             console.error('API configuration check failed:', error);
-            document.getElementById('googleMapsStatus').textContent = 'エラー';
         });
 }
 
@@ -390,6 +404,8 @@ async function performSearch() {
         }
 
         document.getElementById('infoSection').style.display = 'block';
+    document.getElementById('plateauSection').style.display = 'block';
+        document.getElementById('plateauSection').style.display = 'block';
 
     } catch (error) {
         console.error('検索エラー:', error.message);
@@ -433,6 +449,7 @@ function updateMapWithPlace(place) {
     }
 
     document.getElementById('infoSection').style.display = 'block';
+    document.getElementById('plateauSection').style.display = 'block';
 }
 
 function estimateBuildingHeight(types) {
@@ -745,4 +762,456 @@ function initializeCesiumEventHandlers() {
             console.info('Cesiumイベントハンドラーを設定しました');
         }
     }, 1000); // 1秒ごとにチェック
+}
+
+// PLATEAU API関連の機能
+function initializePlateauHandlers() {
+    const plateauButton = document.getElementById('plateauButton');
+    if (plateauButton) {
+        plateauButton.addEventListener('click', fetchPlateauData);
+    }
+}
+
+async function fetchPlateauData() {
+    const lat = parseFloat(document.getElementById('buildingLat').textContent);
+    const lng = parseFloat(document.getElementById('buildingLng').textContent);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+        showPlateauError('緯度・経度が取得できません。先に建物を検索してください。');
+        return;
+    }
+    
+    // 検索キーワードを取得（元の検索入力値または現在の建物名）
+    const searchKeyword = document.getElementById('searchInput').value.trim() || currentPlaceName || '';
+    
+    console.info(`PLATEAUデータ取得開始: lat=${lat}, lng=${lng}, keyword=${searchKeyword}`);
+    
+    // UI状態を更新
+    document.getElementById('plateauButton').disabled = true;
+    document.getElementById('plateauLoading').style.display = 'block';
+    document.getElementById('plateauError').style.display = 'none';
+    document.getElementById('plateauData').style.display = 'none';
+    
+    // 取得状況を表示
+    updateLoadingStatus('座標からメッシュコードを計算中...');
+    
+    try {
+        updateLoadingStatus(`座標(${lat.toFixed(6)}, ${lng.toFixed(6)})のPLATEAUデータを検索中...`);
+        const response = await fetch('/api/plateau/building', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ lat, lng, searchKeyword })
+        });
+        
+        updateLoadingStatus('該当エリアのデータを確認中...');
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            throw new Error(data.message);
+        }
+        
+        if (data.data) {
+            // メタデータからメッシュコード情報を表示
+            if (data.data.metadata) {
+                const meta = data.data.metadata;
+                updateLoadingStatus(`メッシュコード: 2次=${meta.mesh2}, 3次=${meta.mesh3}`);
+                
+                if (meta.apiUrl) {
+                    const apiPath = meta.apiUrl.replace('https://api.plateauview.mlit.go.jp', '');
+                    updateLoadingStatus(`PLATEAU APIにアクセス中: ${apiPath}`);
+                }
+            }
+            
+            // 簡潔なログ出力
+            console.log(`PLATEAUデータ取得完了: ${data.data.cities?.length || 0}都市, ${data.data.files?.length || 0}ファイル`);
+            
+            // 都市名を表示
+            if (data.data.cities && data.data.cities.length > 0) {
+                updateLoadingStatus(`${data.data.cities.length}都市が見つかりました`);
+                const cityNames = data.data.cities.map(c => `${c.cityName}(${c.year}年)`).join(', ');
+                updateLoadingStatus(`${cityNames}のデータを確認しました`);
+            }
+            
+            displayPlateauData(data.data);
+            
+            // 建物データがある場合は自動的に詳細を取得
+            if (data.data.buildingData && data.data.buildingData.targetFile) {
+                const fileName = data.data.buildingData.targetFile.code || 'unknown';
+                updateLoadingStatus(`${fileName}_bldg_*.gml を使用`);
+                updateLoadingStatus('CityGMLファイルを特定しました。建物詳細を取得中...');
+                await window.fetchBuildingDetails(data.data.buildingData.targetFile.url);
+            } else if (data.data.buildingData && data.data.buildingData.targetFiles && data.data.buildingData.targetFiles.length > 0) {
+                updateLoadingStatus(`${data.data.buildingData.targetFiles.length}件のCityGMLファイルが見つかりました`);
+                const firstFile = data.data.buildingData.targetFiles[0];
+                const fileName = firstFile.code || 'unknown';
+                updateLoadingStatus(`${fileName}_bldg_*.gml を使用`);
+                await window.fetchBuildingDetails(firstFile.url);
+            }
+        } else {
+            showPlateauError('建物データが見つかりませんでした。このエリアはPLATEAUデータが未整備の可能性があります。');
+        }
+        
+    } catch (error) {
+        console.error('PLATEAUデータ取得エラー:', error);
+        showPlateauError(error.message || 'PLATEAUデータの取得に失敗しました。');
+    } finally {
+        document.getElementById('plateauButton').disabled = false;
+        document.getElementById('plateauLoading').style.display = 'none';
+    }
+}
+
+function displayPlateauData(data) {
+    console.info('PLATEAUデータを表示します');
+    
+    // エラー要素を非表示
+    document.getElementById('plateauError').style.display = 'none';
+    
+    // データコンテナを表示
+    document.getElementById('plateauData').style.display = 'block';
+    
+    // メタデータを表示
+    if (data.metadata) {
+        console.log('メッシュコード情報:', {
+            '2次メッシュ': data.metadata.meshCode,
+            '3次メッシュ': data.metadata.mesh3
+        });
+    }
+    
+    // 都市計画情報セクションのみを表示（初期は空）
+    const urbanPlanningElement = document.getElementById('plateauUrbanPlanningInfo');
+    if (urbanPlanningElement) {
+        displayPlateauSection('plateauUrbanPlanningInfo', {});
+    }
+}
+
+function displayPlateauSection(elementId, data) {
+    const container = document.getElementById(elementId);
+    if (!container) {
+        console.warn(`要素 ${elementId} が見つかりません`);
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    for (const [label, value] of Object.entries(data)) {
+        const item = document.createElement('div');
+        item.className = 'plateau-info-item';
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'plateau-label';
+        labelSpan.textContent = label + ':';
+        item.appendChild(labelSpan);
+        
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'plateau-value';
+        
+        // DOM要素の場合は直接追加
+        if (value instanceof HTMLElement) {
+            valueSpan.appendChild(value);
+        }
+        // HTMLコンテンツ（リンクなど）の場合はそのまま挿入
+        else if (typeof value === 'string' && value.includes('<')) {
+            valueSpan.innerHTML = value;
+        }
+        // それ以外はエスケープして表示
+        else {
+            valueSpan.textContent = String(value);
+        }
+        
+        item.appendChild(valueSpan);
+        container.appendChild(item);
+    }
+}
+
+function formatBuildingUsage(usage) {
+    if (!usage) return '不明';
+    
+    // PLATEAUの用途コードを日本語に変換
+    const usageMap = {
+        '401': '業務施設',
+        '402': '商業施設',
+        '403': '宿泊施設',
+        '404': '商業系複合施設',
+        '411': '住宅',
+        '412': '共同住宅',
+        '413': '店舗等併用住宅',
+        '414': '店舗等併用共同住宅',
+        '415': '作業所併用住宅',
+        '421': '官公庁施設',
+        '422': '文教厚生施設',
+        '431': '運輸倉庫施設',
+        '441': '工場',
+        '451': '農林漁業用施設',
+        '452': '供給処理施設',
+        '453': '防衛施設',
+        '454': 'その他'
+    };
+    
+    return usageMap[usage] || usage;
+}
+
+function formatStructureType(type) {
+    if (!type) return '不明';
+    
+    // PLATEAUの構造種別コードを日本語に変換
+    const typeMap = {
+        '601': '木造・土蔵造',
+        '602': '鉄骨鉄筋コンクリート造',
+        '603': '鉄筋コンクリート造',
+        '604': '鉄骨造',
+        '605': '軽量鉄骨造',
+        '606': 'レンガ造・コンクリートブロック造・石造',
+        '607': '非木造',
+        '608': 'その他'
+    };
+    
+    return typeMap[type] || type;
+}
+
+function showPlateauError(message) {
+    const errorElement = document.getElementById('plateauError');
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+    document.getElementById('plateauData').style.display = 'none';
+}
+
+// 建物詳細を取得して表示（グローバル関数として定義）
+window.fetchBuildingDetails = async function(fileUrl) {
+    console.info('建物詳細を取得:', fileUrl);
+    
+    // 座標とキーワードを取得
+    const lat = parseFloat(document.getElementById('buildingLat').textContent);
+    const lng = parseFloat(document.getElementById('buildingLng').textContent);
+    const searchKeyword = document.getElementById('searchInput').value.trim() || currentPlaceName || '';
+    
+    // 詳細表示エリアを作成（まだない場合）
+    let detailContainer = document.getElementById('plateauDetailContainer');
+    if (!detailContainer) {
+        detailContainer = document.createElement('div');
+        detailContainer.id = 'plateauDetailContainer';
+        detailContainer.className = 'plateau-detail-container';
+        document.getElementById('plateauData').appendChild(detailContainer);
+    }
+    
+    // ローディング表示
+    detailContainer.innerHTML = '<div class="plateau-loading">建物詳細を取得中...<br><span id="loadingProgress"></span></div>';
+    
+    try {
+        // CityGMLファイルから建物情報を取得
+        updateLoadingStatus('CityGMLファイルをダウンロード中...');
+        
+        const response = await fetch('/api/plateau/building-attributes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fileUrl, lat, lng, searchKeyword })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            throw new Error(data.message);
+        }
+        
+        if (data.data && data.data.buildings) {
+            // ファイルサイズの推定表示
+            if (data.data.buildingCount) {
+                const estimatedSize = Math.round(data.data.buildingCount * 0.05); // 概算MB
+                updateLoadingStatus(`CityGMLファイル(約${estimatedSize}MB)を解析中...`);
+                updateLoadingStatus(`XMLを解析中... ${data.data.buildingCount}件の建物IDを抽出`);
+            }
+            
+            // バッチ処理情報を表示
+            if (data.data.batchInfo) {
+                const progressElement = document.getElementById('loadingProgress');
+                if (progressElement) {
+                    progressElement.textContent = data.data.batchInfo.message;
+                }
+                
+                // バッチ処理の詳細を表示
+                const totalBatches = data.data.batchInfo.totalBatches;
+                if (totalBatches > 1) {
+                    updateLoadingStatus(`建物属性を取得中: 合計${totalBatches}バッチで処理`);
+                    updateLoadingStatus(`建物属性を${totalBatches}バッチで取得開始`);
+                    updateLoadingStatus(`建物属性を取得します: 合計${data.data.buildingCount}件を50件ずつ処理`);
+                    
+                    // 実際のサーバー処理時間を考慮（26バッチで約13秒）
+                    const timePerBatch = 500; // 0.5秒/バッチ
+                    let currentBatch = 1;
+                    
+                    const batchInterval = setInterval(() => {
+                        if (currentBatch <= totalBatches) {
+                            const batchSize = currentBatch === totalBatches ? 
+                                (data.data.buildingCount % 50) || 50 : 50;
+                            updateLoadingStatus(`バッチ ${currentBatch}/${totalBatches} を処理中... (${batchSize}件)`);
+                            
+                            // 次のバッチ完了メッセージ
+                            setTimeout(() => {
+                                if (currentBatch <= totalBatches) {
+                                    const completedCount = currentBatch === totalBatches ? 
+                                        batchSize : 50;
+                                    updateLoadingStatus(`バッチ ${currentBatch} 完了: ${completedCount}件の建物属性を取得`);
+                                }
+                            }, timePerBatch / 2);
+                            
+                            currentBatch++;
+                        } else {
+                            clearInterval(batchInterval);
+                            updateLoadingStatus(`属性取得完了: 合計${data.data.totalCount}件の建物属性を取得しました`);
+                        }
+                    }, timePerBatch);
+                }
+            }
+            
+            // フィルタリング情報を表示
+            if (searchKeyword) {
+                updateLoadingStatus(`キーワード"${searchKeyword}"でマッチング中...`);
+                if (data.data.filteredCount !== undefined) {
+                    updateLoadingStatus(`${data.data.filteredCount}件が"${searchKeyword}"に該当`);
+                }
+            }
+            
+            if (data.data.totalCount > 0) {
+                updateLoadingStatus('各建物までの距離を計算中...');
+            }
+            
+            window.displayBuildingDetails(data.data.buildings);
+        } else {
+            detailContainer.innerHTML = '<div class="plateau-error">建物詳細情報が取得できませんでした</div>';
+        }
+        
+    } catch (error) {
+        console.error('建物詳細取得エラー:', error);
+        detailContainer.innerHTML = `<div class="plateau-error">エラー: ${error.message}</div>`;
+    }
+}
+
+// 建物詳細を表示
+window.displayBuildingDetails = function(buildings) {
+    const detailContainer = document.getElementById('plateauDetailContainer');
+    
+    if (!buildings || buildings.length === 0) {
+        detailContainer.innerHTML = '<div class="plateau-info">建物情報が見つかりませんでした</div>';
+        return;
+    }
+    
+    console.log(`${buildings.length}件の建物情報を取得 (最も近い建物を表示)`);
+    
+    // 最も近い建物のデータを開発コンソールに出力
+    if (buildings.length > 0 && buildings[0]) {
+        console.log('最も近い建物の属性データ:');
+        console.log(JSON.stringify(buildings[0], null, 2));
+    }
+    
+    let html = '<div class="plateau-buildings">';
+    html += '<h4>建物詳細情報</h4>';
+    
+    // 最も近い建瑩1件のみ表示
+    const building = buildings[0];
+    html += `<div class="plateau-building-item">`;
+    
+    // 距離情報の表示
+    if (building.matchInfo && building.matchInfo.distance !== null) {
+        html += '<div class="match-info">';
+        const distanceText = building.matchInfo.distance < 1000 
+            ? `${Math.round(building.matchInfo.distance)}m` 
+            : `${(building.matchInfo.distance / 1000).toFixed(1)}km`;
+        html += `<span class="distance-badge">距離: ${distanceText}</span>`;
+        html += '</div>';
+    }
+        
+        
+    // 住所情報
+    if (building.location) {
+        html += '<div class="plateau-section">';
+        html += '<strong>住所情報:</strong>';
+        html += '<ul>';
+        if (building.location.fullAddress) {
+            html += `<li>住所: ${building.location.fullAddress}</li>`;
+        } else {
+            if (building.location.prefecture) html += `<li>都道府県: ${building.location.prefecture}</li>`;
+            if (building.location.city) html += `<li>市区町村: ${building.location.city}</li>`;
+            if (building.location.town) html += `<li>町名: ${building.location.town}</li>`;
+            if (building.location.branch) html += `<li>番地: ${building.location.branch}</li>`;
+        }
+        html += '</ul>';
+        html += '</div>';
+    }
+    
+    // 基本情報
+    if (building.basic) {
+        html += '<div class="plateau-section">';
+        html += '<strong>基本情報:</strong>';
+        html += '<ul>';
+        if (building.gmlId) html += `<li>建物ID: ${building.gmlId}</li>`;
+        if (building.basic.name) html += `<li>名称: ${building.basic.name}</li>`;
+        if (building.basic.address) html += `<li>住所: ${building.basic.address}</li>`;
+        if (building.basic.usage) html += `<li>用途: ${building.basic.usage}</li>`;
+        if (building.basic.class) html += `<li>建物分類: ${building.basic.class}</li>`;
+        if (building.basic.yearOfConstruction) html += `<li>建築年: ${building.basic.yearOfConstruction}年</li>`;
+        if (building.basic.creationDate) html += `<li>データ作成日: ${building.basic.creationDate}</li>`;
+        html += '</ul>';
+        html += '</div>';
+    }
+    
+    // 建築情報
+    if (building.architecture) {
+        html += '<div class="plateau-section">';
+        html += '<strong>建築情報:</strong>';
+        html += '<ul>';
+        if (building.architecture.measuredHeight) html += `<li>高さ: ${building.architecture.measuredHeight}m</li>`;
+        if (building.architecture.storeysAboveGround) html += `<li>地上階数: ${building.architecture.storeysAboveGround}階</li>`;
+        if (building.architecture.storeysBelowGround) html += `<li>地下階数: ${building.architecture.storeysBelowGround}階</li>`;
+        html += '</ul>';
+        html += '</div>';
+    }
+    
+    // 都市計画情報
+    if (building.urbanPlanning && Object.keys(building.urbanPlanning).length > 0) {
+        html += '<div class="plateau-section">';
+        html += '<strong>都市計画情報:</strong>';
+        html += '<ul>';
+        if (building.urbanPlanning.areaClassificationType) html += `<li>区域区分: ${building.urbanPlanning.areaClassificationType}</li>`;
+        if (building.urbanPlanning.districtsAndZonesType) {
+            const zones = Array.isArray(building.urbanPlanning.districtsAndZonesType) 
+                ? building.urbanPlanning.districtsAndZonesType.join('、') 
+                : building.urbanPlanning.districtsAndZonesType;
+            html += `<li>用途地域: ${zones}</li>`;
+        }
+        if (building.urbanPlanning.detailedUsage) html += `<li>詳細用途: ${building.urbanPlanning.detailedUsage}</li>`;
+        if (building.urbanPlanning.fireproofStructureType) html += `<li>防火構造: ${building.urbanPlanning.fireproofStructureType}</li>`;
+        if (building.urbanPlanning.landUseType) html += `<li>土地利用種別: ${building.urbanPlanning.landUseType}</li>`;
+        if (building.urbanPlanning.buildingFootprintArea) html += `<li>建築面積: ${building.urbanPlanning.buildingFootprintArea}㎡</li>`;
+        if (building.urbanPlanning.totalFloorArea) html += `<li>延床面積: ${building.urbanPlanning.totalFloorArea}㎡</li>`;
+        if (building.urbanPlanning.buildingRoofEdgeArea) html += `<li>屋上縁面積: ${building.urbanPlanning.buildingRoofEdgeArea}㎡</li>`;
+        if (building.urbanPlanning.buildingStructureType) html += `<li>構造種別: ${building.urbanPlanning.buildingStructureType}</li>`;
+        if (building.urbanPlanning.specifiedBuildingCoverageRate) html += `<li>指定建ぺい率: ${building.urbanPlanning.specifiedBuildingCoverageRate}%</li>`;
+        if (building.urbanPlanning.specifiedFloorAreaRate) html += `<li>指定容積率: ${building.urbanPlanning.specifiedFloorAreaRate}%</li>`;
+        if (building.urbanPlanning.surveyYear) html += `<li>調査年: ${building.urbanPlanning.surveyYear}</li>`;
+        if (building.urbanPlanning.urbanPlanType) html += `<li>都市計画区分: ${building.urbanPlanning.urbanPlanType}</li>`;
+        html += '</ul>';
+        html += '</div>';
+    }
+    
+    // 追加情報
+    if (building.additionalInfo && Object.keys(building.additionalInfo).length > 0) {
+        html += '<div class="plateau-section">';
+        html += '<strong>追加情報:</strong>';
+        html += '<ul>';
+        for (const [key, value] of Object.entries(building.additionalInfo)) {
+            if (value !== null && value !== undefined) {
+                html += `<li>${key}: ${value}</li>`;
+            }
+        }
+        html += '</ul>';
+        html += '</div>';
+    }
+        
+    html += '</div>';
+    
+    html += '</div>';
+    detailContainer.innerHTML = html;
 }
