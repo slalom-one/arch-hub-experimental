@@ -69,15 +69,22 @@
                 </div>
             </section>
 
-            <section class="status-section">
-                <h3>API設定状態</h3>
-                <div id="apiStatus" class="api-status">
-                    <div class="status-item">
-                        <span class="status-label">Google Maps API:</span>
-                        <span id="googleMapsStatus" class="status-value">確認中...</span>
+            <section class="plateau-section" id="plateauSection" style="display: none;">
+                <h2>PLATEAU情報</h2>
+                <div class="plateau-container">
+                    <button id="plateauButton" class="plateau-button">PLATEAUから建物データを取得</button>
+                    <div id="plateauLoading" class="plateau-loading" style="display: none;">
+                        <span class="loading-spinner"></span>
+                        データを取得中...
+                    </div>
+                    <div id="plateauError" class="error-message"></div>
+                    <div id="plateauData" class="plateau-data" style="display: none;">
+                        <h3>都市計画情報</h3>
+                        <div class="plateau-info-grid" id="plateauUrbanPlanningInfo"></div>
                     </div>
                 </div>
             </section>
+
 
             <section class="console-section">
                 <h3>開発コンソール</h3>

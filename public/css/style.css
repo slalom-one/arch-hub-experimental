@@ -277,6 +277,252 @@ section {
     background-color: #444;
 }
 
+/* PLATEAU Section */
+.plateau-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.plateau-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+}
+
+.plateau-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.warning-icon {
+    margin-right: 10px;
+    font-size: 20px;
+}
+
+.plateau-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.plateau-button:hover {
+    background-color: #0056b3;
+}
+
+.plateau-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.plateau-loading {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+    color: #666;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.plateau-data {
+    margin-top: 20px;
+}
+
+.plateau-data h3 {
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+}
+
+.plateau-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.plateau-info-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.plateau-label {
+    font-weight: bold;
+    color: #666;
+    margin-right: 10px;
+    min-width: 100px;
+}
+
+.plateau-value {
+    color: #333;
+    flex: 1;
+}
+
+/* PLATEAU 詳細表示ボタン */
+.plateau-detail-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.plateau-detail-button:hover {
+    background-color: #1976D2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* PLATEAU 詳細コンテナ */
+.plateau-detail-container {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.plateau-buildings h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.plateau-building-item {
+    background-color: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.plateau-building-item h5 {
+    color: #2196F3;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.plateau-section {
+    margin-bottom: 12px;
+}
+
+.plateau-section strong {
+    color: #666;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.plateau-section ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.plateau-section li {
+    margin-bottom: 3px;
+    color: #333;
+}
+
+.plateau-loading {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+    font-style: italic;
+}
+
+.plateau-error {
+    color: #f44336;
+    padding: 10px;
+    background-color: #ffebee;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.plateau-info {
+    color: #666;
+    padding: 10px;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* 検索結果のマッチ情報表示 */
+.search-keyword {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.match-info {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.match-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.match-badge.match-name {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.match-badge.match-address {
+    background-color: #2196F3;
+    color: white;
+}
+
+.distance-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background-color: #f0f0f0;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #666;
+}
+
 footer {
     text-align: center;
     padding: 20px;
