@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>建物リユース資材調査アプリケーション</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>建物リユース資材調査アプリケーション</h1>
+            <p class="subtitle">Google Maps API統合デモ</p>
+        </header>
+
+        <main>
+            <section class="search-section">
+                <h2>建物検索</h2>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="建物名または住所を入力してください（例：大阪府大阪市北区堂島浜1-3-1）"
+                        class="search-input"
+                    >
+                    <button id="searchButton" class="search-button">検索</button>
+                </div>
+                <div id="searchError" class="error-message"></div>
+            </section>
+
+            <section class="map-section">
+                <h2>3D建物表示</h2>
+                <div id="map" class="map-container">
+                    <div class="map-loading">地図を読み込み中...</div>
+                </div>
+            </section>
+
+            <section class="info-section" id="infoSection" style="display: none;">
+                <h2>建物情報</h2>
+                <div class="info-container">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">名称:</span>
+                            <span id="buildingName" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">住所:</span>
+                            <span id="buildingAddress" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">緯度:</span>
+                            <span id="buildingLat" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">経度:</span>
+                            <span id="buildingLng" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Place ID:</span>
+                            <span id="buildingPlaceId" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">タイプ:</span>
+                            <span id="buildingTypes" class="info-value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="status-section">
+                <h3>API設定状態</h3>
+                <div id="apiStatus" class="api-status">
+                    <div class="status-item">
+                        <span class="status-label">Google Maps API:</span>
+                        <span id="googleMapsStatus" class="status-value">確認中...</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="console-section">
+                <h3>開発コンソール</h3>
+                <div id="console" class="console-container">
+                    <div class="console-content" id="consoleContent"></div>
+                </div>
+                <button id="clearConsole" class="clear-console-btn">コンソールをクリア</button>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 建物リユース資材調査アプリケーション</p>
+        </footer>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
